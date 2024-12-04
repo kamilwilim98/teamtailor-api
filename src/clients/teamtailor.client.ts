@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
@@ -9,12 +9,14 @@ export class TeamtailorClient {
   client: axios.AxiosInstance;
   baseUrl: string;
   apiKey: string;
+  logger: Logger;
 
   constructor(private readonly configService: ConfigService) {
     this.remainingRequests = Infinity;
     this.resetTime = Date.now();
-    this.baseUrl = this.configService.get('TEAMTAILOR_API_URL') as string;
-    this.apiKey = this.configService.get('TEAMTAILOR_API_KEY') as string;
+    this.baseUrl = this.configService.getOrThrow('TEAMTAILOR_API_URL');
+    this.apiKey = this.configService.getOrThrow('TEAMTAILOR_API_KEY');
+    this.logger = new Logger(TeamtailorClient.name);
 
     this.client = axios.create({
       baseURL: this.baseUrl,
@@ -44,7 +46,7 @@ export class TeamtailorClient {
 
       this.resetTime = Date.now() + reset * 1000;
 
-      console.log(
+      this.logger.debug(
         `Rate Limit: ${limit}, Remaining: ${this.remainingRequests}, Reset In: ${reset}s`,
       );
     }
@@ -55,7 +57,7 @@ export class TeamtailorClient {
     if (this.remainingRequests <= 0) {
       const waitTime = this.resetTime - Date.now();
       if (waitTime > 0) {
-        console.log(`Rate limit exceeded. Waiting for ${waitTime / 1000} seconds...`);
+        this.logger.debug(`Rate limit exceeded. Waiting for ${waitTime / 1000} seconds...`);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
     }

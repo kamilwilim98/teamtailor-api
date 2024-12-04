@@ -3,6 +3,7 @@ import { TeamtailorRepository } from './repository/teamtailor.repository';
 import { CSVSchemaType, CSVService } from './services';
 import { csvSchemaTypeToCSVOptions } from './mappers';
 import { Response } from 'express';
+import { CandidatesTransformer, TransformedCandidate } from './transformers';
 
 @Controller()
 export class AppController {
@@ -16,23 +17,25 @@ export class AppController {
     return 'OK';
   }
 
+  @Get('/candidates-csv')
+  async getCandidatesCSV(@Res() res: Response): Promise<void> {
+    const candidates = await this.teamtailorRepository.getAllCandidates();
+
+    const csv = await this.csvService.JSONtoCSV(
+      candidates,
+      csvSchemaTypeToCSVOptions[CSVSchemaType.CANDIDATES],
+    );
+
+    res
+      .setHeader('Content-Type', 'text/csv')
+      .setHeader('Content-Disposition', 'attachment; filename="candidates.csv"')
+      .send(csv);
+  }
+
   @Get('/candidates')
-  async getCandidatesCSV(@Res() response: Response): Promise<void> {
-    try {
-      const candidates = await this.teamtailorRepository.getAllCandidates();
+  async getCandidates(): Promise<TransformedCandidate[]> {
+    const candidates = await this.teamtailorRepository.getAllCandidates();
 
-      const csv = await this.csvService.JSONtoCSV(
-        candidates,
-        csvSchemaTypeToCSVOptions[CSVSchemaType.CANDIDATES],
-      );
-
-      response
-        .setHeader('Content-Type', 'text/csv')
-        .setHeader('Content-Disposition', 'attachment; filename="candidates.csv"')
-        .send(csv);
-    } catch (error) {
-      console.error('Error generating CSV:', error);
-      response.status(500).send('Error generating CSV file');
-    }
+    return CandidatesTransformer.transform(candidates);
   }
 }

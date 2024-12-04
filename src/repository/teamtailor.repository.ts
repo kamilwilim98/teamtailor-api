@@ -1,20 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TeamtailorClient } from '../clients';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CacheResult } from '../decorators/cache-result.decorator';
 
 export interface Candidate {
   id: string;
   attributes: Record<string, any>;
+  relationships: Record<string, any>;
 }
 
 @Injectable()
 export class TeamtailorRepository {
-  constructor(private readonly teamtailorClient: TeamtailorClient) {}
+  constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly teamtailorClient: TeamtailorClient,
+  ) {}
 
+  @CacheResult(60000)
   async getAllCandidates(): Promise<Candidate[]> {
     let pageNumber = 1;
     const pageSize = 30;
     let response;
-    let allCandidates = [] as any[];
+    let allCandidates: Candidate[] = [];
 
     do {
       response = await this.teamtailorClient.client
